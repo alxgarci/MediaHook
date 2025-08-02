@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mediahook:
+    build:
+      context: .            # assumes docker-compose.yml is next to Dockerfile
+      dockerfile: Dockerfile
+    container_name: mediahook
+
+    ports:
+      - "4343:4343"
+      - "4343:4343/udp"
+
+    volumes:
+      # Mount the entire config directory to preserve structure
+      - ./config:/app/config
+      # Alternatively, you can mount specific subdirectories:
+      # - ./config/config.json:/app/config/config.json
+      # - ./config/cfg:/app/config/cfg
+
+    restart: unless-stopped

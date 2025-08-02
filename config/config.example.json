@@ -1,0 +1,57 @@
+{
+  "sonarr": [
+    {
+      "name": "sonarr_main",
+      "host": "localhost",
+      "port": 8989,
+      "api_key": "your_sonarr_api_key",
+      "hard_drive_route": "/media/data",
+      "hard_drive_threshold": 500
+    }
+  ],
+  "radarr": [
+    {
+      "name": "radarr_main",
+      "host": "localhost",
+      "port": 7878,
+      "api_key": "your_radarr_api_key",
+      "hard_drive_route": "/media/data",
+      "hard_drive_threshold": 500
+    }
+  ],
+  "qbittorrent": [
+    {
+      "name": "qbittorrent_vpn",
+      "host": "localhost",
+      "port": 8081,
+      "username": "admin",
+      "password": "adminadmin",
+      "seed_limit": 23040
+    },
+    {
+      "name": "qbittorrent_novpn",
+      "host": "localhost",
+      "port": 8080,
+      "username": "admin",
+      "password": "adminadmin",
+      "seed_limit": 23040
+    }
+  ],
+  "tmdb": {
+    "api_key": "your_tmdb_api_key",
+    "language": "es-ES",
+    "display_language": "es"
+  },
+  "imdb": {
+    "language": "es-es"
+  },
+  "telegram": {
+    "token": "your_telegram_token",
+    "chat_id": "your_chat_id",
+    "private_chat_id": "your_private_chat_id"
+  },
+  "general": {
+    "log_level": "INFO",
+    "dry_run": false
+  }
+}
