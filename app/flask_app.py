@@ -453,7 +453,6 @@ def start_server():
     ip_urls = [f"http://{ip}:4343" for ip in local_ips]
     
     app.run(host='0.0.0.0', port=4343)
-    logger.info(f'Server started and accessible on: {", ".join(ip_urls)}')
 
 if __name__ == "__main__":
     start_server()
