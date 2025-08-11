@@ -1,4 +1,5 @@
 # MediaHook
+I'm not making a 'badass' AI logo and I'm not an artist neither, sry :)
 
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/alxgarci/MediaHook/pkgs/container/mediahook)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -6,7 +7,9 @@
 
 MediaHook is an automated webhook system that integrates **Sonarr**, **Radarr**, **Overseerr**, and **qBittorrent** to automatically manage media downloads and hard drive available space with Telegram notifications.
 
-This is just a 'pro' version of what i've been using for more than a year, as I needed it.
+MediaHook listens for webhooks from Sonarr, Radarr, and Overseerr, sends notifications with media titles in your preferred language, and automatically removes older media from Sonarr and Radarr when available HDD space drops below your configured threshold. It also manages torrents by setting seed limits or removing them, using Sonarr/Radarr history to match and clean up torrents (including those imported manually) ensuring hardlinked files are properly deleted and disk space is reclaimed.
+
+This is just a 'pro' version of what I've been using for more than a year, as I needed it.
 
 ## Features
 
