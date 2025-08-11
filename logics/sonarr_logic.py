@@ -209,6 +209,11 @@ class SonarrLogic:
         res_actions_del = []
         res_actions_nodel = []
         
+        # Check dry_run mode
+        dry_run = self.app_config.general.get('dry_run', True)
+        if dry_run:
+            logger.info("🔍 DRY RUN MODE: Episodes will not be actually deleted from Sonarr")
+        
         # Initialize the manual import manager
         manual_import_manager = DeleteManualImportManager(self.app_config)
         
@@ -217,16 +222,19 @@ class SonarrLogic:
             res_actions_del.extend(res_actions_del_add)
             res_actions_nodel.extend(res_actions_nodel_add)
             
-            try:
-                response = requests.delete(
-                    f"{instance.api_url}/api/v3/episodefile/{episode['episodeFileId']}", 
-                    headers=instance.headers
-                )
-                logger.info(f"Deleting episode id {episode['episodeFileId']}: "
-                          f"{instance.api_url}/api/v3/episodefile/{episode['episodeFileId']}: "
-                          f"STATUS {response.status_code}")
-            except requests.RequestException as e:
-                logger.error(f"Error deleting episode {episode['episodeFileId']}: {e}")
+            if dry_run:
+                logger.info(f"🔍 DRY RUN: Would delete episode id {episode['episodeFileId']} from Sonarr")
+            else:
+                try:
+                    response = requests.delete(
+                        f"{instance.api_url}/api/v3/episodefile/{episode['episodeFileId']}", 
+                        headers=instance.headers
+                    )
+                    logger.info(f"Deleting episode id {episode['episodeFileId']}: "
+                              f"{instance.api_url}/api/v3/episodefile/{episode['episodeFileId']}: "
+                              f"STATUS {response.status_code}")
+                except requests.RequestException as e:
+                    logger.error(f"Error deleting episode {episode['episodeFileId']}: {e}")
         
         logger.info(json.dumps(res_actions_del, indent=4))
         logger.info(json.dumps(res_actions_nodel, indent=4))

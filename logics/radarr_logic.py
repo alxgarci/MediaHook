@@ -208,6 +208,11 @@ class RadarrLogic:
         res_actions_del = []
         res_actions_nodel = []
         
+        # Check dry_run mode
+        dry_run = self.app_config.general.get('dry_run', True)
+        if dry_run:
+            logger.info("🔍 DRY RUN MODE: Movies will not be actually deleted from Radarr")
+        
         # Initialize the manual import manager
         manual_import_manager = DeleteManualImportManager(self.app_config)
         
@@ -216,16 +221,19 @@ class RadarrLogic:
             res_actions_del.extend(res_actions_del_add)
             res_actions_nodel.extend(res_actions_nodel_add)
             
-            try:
-                response = requests.delete(
-                    f"{instance.api_url}/api/v3/movie/{movie_id}?deleteFiles=true", 
-                    headers=instance.headers
-                )
-                logger.info(f"Deleting movie id {movie_id}: "
-                          f"{instance.api_url}/api/v3/movie/{movie_id}?deleteFiles=true: "
-                          f"STATUS {response.status_code}")
-            except requests.RequestException as e:
-                logger.error(f"Error deleting movie {movie_id}: {e}")
+            if dry_run:
+                logger.info(f"🔍 DRY RUN: Would delete movie id {movie_id} from Radarr")
+            else:
+                try:
+                    response = requests.delete(
+                        f"{instance.api_url}/api/v3/movie/{movie_id}?deleteFiles=true", 
+                        headers=instance.headers
+                    )
+                    logger.info(f"Deleting movie id {movie_id}: "
+                              f"{instance.api_url}/api/v3/movie/{movie_id}?deleteFiles=true: "
+                              f"STATUS {response.status_code}")
+                except requests.RequestException as e:
+                    logger.error(f"Error deleting movie {movie_id}: {e}")
         
         logger.info(json.dumps(res_actions_del, indent=4))
         logger.info(json.dumps(res_actions_nodel, indent=4))

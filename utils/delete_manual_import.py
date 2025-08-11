@@ -59,7 +59,7 @@ class DeleteManualImportManager:
             app_config: Application configuration (ApplicationConfig)
         """
         self.app_config = app_config
-        self.dry_run = app_config.general.get('dry_run', False)
+        self.dry_run = app_config.general.get('dry_run', True)
         
         # Radarr configuration
         if app_config.radarr_instances:
@@ -374,19 +374,19 @@ class DeleteManualImportManager:
         
         return res_actions_del, res_actions_nodel
     
-    def find_manual_import_match(self, sources: List[str], categories: List[str]) -> Optional[Tuple]:
+    def find_manual_import_matches(self, sources: List[str], categories: List[str]) -> List[Tuple]:
         """
-        Find a torrent that matches manually imported files
+        Find ALL torrents that match manually imported files (including cross-seeds)
         
         Args:
             sources: List of normalized sources
             categories: List of categories to search
             
         Returns:
-            Tuple (instance, torrent, reason) if match found, None otherwise
+            List of tuples (instance, torrent, reason) for all matches found
         """
         if not sources:
-            return None
+            return []
         
         # Collect all candidate torrents
         candidates = []
@@ -403,29 +403,37 @@ class DeleteManualImportManager:
         normalized_sources = set(sources)
         logger.debug(f"🔍 Searching for matches for sources: {normalized_sources}")
         
+        matches = []
+        
         # Search for exact match by torrent name
         for qbit_instance, torrent in candidates:
             torrent_name_normalized = self.normalize(torrent['name'])
             if torrent_name_normalized in normalized_sources:
-                return (qbit_instance, torrent, f"name == {torrent_name_normalized!r}")
+                matches.append((qbit_instance, torrent, f"name == {torrent_name_normalized!r}"))
         
         # Search for match in internal torrent files
         for qbit_instance, torrent in candidates:
+            # Skip if already matched by name
+            if any(match[1]['hash'] == torrent['hash'] for match in matches):
+                continue
+                
             try:
                 files = self.list_files_for_torrent(qbit_instance, torrent['hash'])
                 for file_info in files:
                     file_name_normalized = self.normalize(file_info['name'])
                     if file_name_normalized in normalized_sources:
-                        return (qbit_instance, torrent, f"file == {file_name_normalized!r}")
+                        matches.append((qbit_instance, torrent, f"file == {file_name_normalized!r}"))
+                        break  # Don't add the same torrent multiple times for different files
             except Exception as e:
                 logger.warning(f"Error getting files for torrent {torrent['hash']}: {e}")
                 continue
         
-        return None
+        logger.info(f"🎯 Found {len(matches)} matching torrents (including cross-seeds)")
+        return matches
     
     def process_manual_import_torrents(self, media: str, item_id: int, sources: List[str]) -> Tuple[List[Dict], List[Dict]]:
         """
-        Process manual import torrents for deletion
+        Process manual import torrents for deletion (including cross-seeds)
         
         Args:
             media: Media type ('radarr' or 'sonarr')
@@ -445,50 +453,52 @@ class DeleteManualImportManager:
         # Select categories based on media type
         categories = self.MOVIE_CATEGORIES if media == 'radarr' else self.TV_CATEGORIES
         
-        # Search for match
-        match = self.find_manual_import_match(sources, categories)
+        # Search for ALL matches (including cross-seeds)
+        matches = self.find_manual_import_matches(sources, categories)
         
-        if not match:
-            logger.debug(f"❌ No manual torrent match found for {media} {item_id}")
+        if not matches:
+            logger.debug(f"❌ No manual torrent matches found for {media} {item_id}")
             res_actions_nodel.append(
                 self.create_action_dict(sources[0], "", self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, self.KEY_REASON_NO_MATCH)
             )
             return res_actions_del, res_actions_nodel
         
-        qbit_instance, torrent, reason = match
-        
-        # Check seeding time
-        try:
-            info = qbit_instance.get_torrent_info([torrent['hash']])
-            seed_sec = info.get(torrent['hash'], {}).get('seeding_time', 0)
-            seed_days = seed_sec / 86400
+        # Process each matching torrent
+        for match_index, (qbit_instance, torrent, reason) in enumerate(matches, 1):
+            logger.info(f"🎯 Processing match {match_index}/{len(matches)}: {torrent['name']} ({torrent['hash']}) in {qbit_instance.name} by {reason}")
             
-            logger.info(f"🎯 Match found: {torrent['name']} ({torrent['hash']}) in {qbit_instance.name} by {reason}; seed={seed_days:.1f}d")
-            
-            # Check seeding threshold
-            if seed_days < self.SEED_THRESHOLD_DAYS:
-                logger.info(f"⏸️  Seed {seed_days:.1f}d < {self.SEED_THRESHOLD_DAYS}d → skipped")
-                res_actions_nodel.append(
-                    self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, self.KEY_REASON_SEEDTIME_UNCOMPLETE)
-                )
-                return res_actions_del, res_actions_nodel
-            
-            # Proceed with deletion
-            if self.delete_torrent_from_qbittorrent(qbit_instance, torrent['hash'], torrent['name']):
-                reason_suffix = self.KEY_REASON_DRY_RUN if self.dry_run else ""
-                res_actions_del.append(
-                    self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_DEL, self.KEY_TYPE_MATCH, reason_suffix)
-                )
-            else:
-                res_actions_nodel.append(
-                    self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, "ERROR_DELETE")
-                )
+            # Check seeding time
+            try:
+                info = qbit_instance.get_torrent_info([torrent['hash']])
+                seed_sec = info.get(torrent['hash'], {}).get('seeding_time', 0)
+                seed_days = seed_sec / 86400
                 
-        except Exception as e:
-            logger.error(f"Error processing torrent {torrent['hash']}: {e}")
-            res_actions_nodel.append(
-                self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, f"ERROR: {str(e)}")
-            )
+                logger.info(f"🎯 Match {match_index}: {torrent['name']} ({torrent['hash']}) in {qbit_instance.name} by {reason}; seed={seed_days:.1f}d")
+                
+                # Check seeding threshold
+                if seed_days < self.SEED_THRESHOLD_DAYS:
+                    logger.info(f"⏸️  Seed {seed_days:.1f}d < {self.SEED_THRESHOLD_DAYS}d → skipped")
+                    res_actions_nodel.append(
+                        self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, self.KEY_REASON_SEEDTIME_UNCOMPLETE)
+                    )
+                    continue
+                
+                # Proceed with deletion
+                if self.delete_torrent_from_qbittorrent(qbit_instance, torrent['hash'], torrent['name']):
+                    reason_suffix = self.KEY_REASON_DRY_RUN if self.dry_run else ""
+                    res_actions_del.append(
+                        self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_DEL, self.KEY_TYPE_MATCH, reason_suffix)
+                    )
+                else:
+                    res_actions_nodel.append(
+                        self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, "ERROR_DELETE")
+                    )
+                    
+            except Exception as e:
+                logger.error(f"Error processing torrent {torrent['hash']}: {e}")
+                res_actions_nodel.append(
+                    self.create_action_dict(torrent['name'], torrent['hash'], self.KEY_ACT_NODELETE, self.KEY_TYPE_MATCH, f"ERROR: {str(e)}")
+                )
         
         return res_actions_del, res_actions_nodel
     

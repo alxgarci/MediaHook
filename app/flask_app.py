@@ -311,8 +311,13 @@ class ApplicationConfig:
         
         self.general = config.get('general', {})
         
+        # Easy access to commonly used general settings
+        self.dry_run = self.general.get('dry_run', True)
+        self.log_level = self.general.get('log_level', 'INFO')
+        
         logger.info(f"Configuration initialized: {len(self.sonarr_instances)} Sonarr, "
                    f"{len(self.radarr_instances)} Radarr, {len(self.qbittorrent_instances)} qBittorrent")
+        logger.info(f"DRY RUN mode: {'ENABLED' if self.dry_run else 'DISABLED'}")
 
 # Global configuration instance
 app_config = ApplicationConfig()
@@ -443,15 +448,7 @@ def overseerr_webhook():
     return jsonify({"message": "Overseerr webhook received"}), 200
 
 def start_server():
-    """Start the Flask server to listen for webhooks."""
-    from utils.utils import get_all_local_ips
-    
-    # Get all available local IPs
-    local_ips = get_all_local_ips()
-    
-    # Format the IP addresses with port 4343
-    ip_urls = [f"http://{ip}:4343" for ip in local_ips]
-    
+    """Start the Flask server to listen for webhooks."""    
     app.run(host='0.0.0.0', port=4343)
 
 if __name__ == "__main__":

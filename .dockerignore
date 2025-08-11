@@ -1,0 +1,39 @@
+# Ignore development and build files
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.env
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Ignore logs (will be created by container)
+*.log
+config/cfg/logs/
+
+# Ignore test files (since you removed testing logic)
+test/
+
+# Ignore documentation
+README.md
+
+# Ignore development config (only in development)
+# Comment this line when building for production:
+config/config.json

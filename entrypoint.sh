@@ -14,8 +14,27 @@ mkdir -p "$LOG_DIR"
 if [ ! -f "$CONFIG_JSON" ]; then
     echo "Creating example config.json file at $CONFIG_JSON..."
     cp "$EXAMPLE_CONFIG_JSON" "$CONFIG_JSON"
+    
+    # Ensure permissions on /app/config
+    chmod -R 777 /app/config
+    
+    echo ""
+    echo "⚠️  FIRST RUN SETUP REQUIRED ⚠️"
+    echo ""
+    echo "config.json has been created from the example template."
+    echo "Please edit config/config.json with your actual configuration:"
+    echo "  - Sonarr/Radarr API keys and hosts"
+    echo "  - qBittorrent credentials"
+    echo "  - Telegram bot token and chat IDs"
+    echo "  - TMDB API key"
+    echo ""
+    echo "After configuration, restart the container:"
+    echo "  docker-compose restart"
+    echo ""
+    echo "Container will now exit..."
+    exit 0
 else
-    echo "config.json file already exists. Not overwriting."
+    echo "config.json file already exists. Starting MediaHook..."
 fi
 
 # Ensure permissions on /app/config

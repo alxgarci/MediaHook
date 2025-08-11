@@ -12,7 +12,6 @@ services:
       - "4343:4343/udp"
 
     volumes:
-      # Mount the entire config directory to preserve structure
       - ./config:/app/config
       # Alternatively, you can mount specific subdirectories:
       # - ./config/config.json:/app/config/config.json
