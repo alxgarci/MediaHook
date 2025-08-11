@@ -6,6 +6,8 @@
 
 MediaHook is an automated webhook system that integrates **Sonarr**, **Radarr**, **Overseerr**, and **qBittorrent** to automatically manage media downloads and hard drive available space with Telegram notifications.
 
+This is just a 'pro' version of what i've been using for more than a year, as I needed it.
+
 ## Features
 
 - Set a space threshold, and if reached or over it will delete content to get over it after importing or upgrading any movie/episode.
@@ -108,7 +110,7 @@ If having more than one instance of qBittorrent, refer to [this section](#multip
 Edit `config/config.json` with your data:
 
 > [!WARNING]
-> Remember to use the example config file, do not copy and paste from this .json as .jsons cannot have comments and will fail reading it. It is just showing the meaning of every field available.
+> Remember to use the [sample config file](config/config.example.json); do not copy and paste from this .json as .json files cannot have comments and will fail reading it. This is just showing the meaning of every field available.
 
 ```json
 {
