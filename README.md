@@ -5,6 +5,15 @@ I'm not making a 'badass' AI logo and I'm not an artist neither, sry :)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/flask-%23000.svg?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/alxgarci/MediaHook?style=flat-square&logo=github&label=Latest%20Release)](https://github.com/alxgarci/MediaHook/releases/latest)
+[![Docker Image Size](https://img.shields.io/docker/image-size/ghcr.io/alxgarci/mediahook/latest?style=flat-square&logo=docker&label=Image%20Size)](https://github.com/alxgarci/MediaHook/pkgs/container/mediahook)
+[![Docker Pulls](https://img.shields.io/badge/docker-pulls-blue?style=flat-square&logo=docker)](https://github.com/alxgarci/MediaHook/pkgs/container/mediahook)
+
+**Available Images:**
+- `ghcr.io/alxgarci/mediahook:latest` - Stable release
+- `ghcr.io/alxgarci/mediahook:dev` - Development build  
+- `ghcr.io/alxgarci/mediahook:v1.0.0` - Specific versions
+
 MediaHook is an automated webhook system that integrates **Sonarr**, **Radarr**, **Overseerr**, and **qBittorrent** to automatically manage media downloads and hard drive available space with Telegram notifications.
 
 MediaHook listens for webhooks from Sonarr, Radarr, and Overseerr, sends notifications with media titles in your preferred language, and automatically removes older media from Sonarr and Radarr when available HDD space drops below your configured threshold. It also manages torrents by setting seed limits or removing them, using Sonarr/Radarr history to match and clean up torrents (including those imported manually) ensuring hardlinked files are properly deleted and disk space is reclaimed.
@@ -74,22 +83,70 @@ This is just a 'pro' version of what I've been using for more than a year, as I 
 
 ## Installation
 
+MediaHook provides multiple Docker image versions to suit different use cases:
+
+### Available Docker Images
+
+| Image Tag | Purpose | Update Frequency | Recommended For |
+|-----------|---------|-----------------|-----------------|
+| `latest` | **Stable Release** | On version tags | Production environments |
+| `dev` | **Development** | On every dev branch push | Testing new features |
+| `v1.0.0` | **Specific Version** | One-time release | Version pinning |
+
 ### Option 1: Using GitHub Container Registry image (Recommended)
 
+#### **For Production (Stable):**
 ```yaml
 # docker-compose.yml
 version: '3.8'
 
 services:
   mediahook:
-    image: ghcr.io/alxgarci/mediahook:latest
+    image: ghcr.io/alxgarci/mediahook:latest  # Always latest stable
     container_name: mediahook
     environment:
-      # Optional: Customize the internal port and host
       - MEDIAHOOK_PORT=4343
       - MEDIAHOOK_HOST=0.0.0.0
     ports:
-      - "4343:4343"  # Change the external port as needed
+      - "4343:4343"
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+```
+
+#### **For Development/Testing:**
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  mediahook-dev:
+    image: ghcr.io/alxgarci/mediahook:dev  # Latest development features
+    container_name: mediahook-dev
+    environment:
+      - MEDIAHOOK_PORT=4343
+      - MEDIAHOOK_HOST=0.0.0.0
+    ports:
+      - "4343:4343"
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+```
+
+#### **For Version Pinning:**
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  mediahook:
+    image: ghcr.io/alxgarci/mediahook:v1.0.0  # Specific version
+    container_name: mediahook
+    environment:
+      - MEDIAHOOK_PORT=4343
+      - MEDIAHOOK_HOST=0.0.0.0
+    ports:
+      - "4343:4343"
     volumes:
       - ./config:/app/config
     restart: unless-stopped
@@ -104,6 +161,48 @@ cd MediaHook
 
 # Run with Docker Compose
 docker-compose up -d
+```
+
+### Docker Image Release Cycle
+
+MediaHook follows a structured release cycle for Docker images:
+
+#### **🚀 Release Process:**
+
+1. **Development**: New features are developed in the `dev` branch
+   - Every push to `dev` → `ghcr.io/alxgarci/mediahook:dev`
+   - Contains the latest features and improvements
+   - May be unstable, use for testing only
+
+2. **Stable Release**: When ready for production
+   - `dev` branch is merged to `master`
+   - A version tag is created (e.g., `v1.0.0`)
+   - Generates multiple tags:
+     - `ghcr.io/alxgarci/mediahook:v1.0.0` (exact version)
+     - `ghcr.io/alxgarci/mediahook:1.0` (minor version)
+     - `ghcr.io/alxgarci/mediahook:1` (major version)
+     - `ghcr.io/alxgarci/mediahook:latest` (latest stable)
+
+#### **📦 Choosing the Right Image:**
+
+- **`latest`**: Always points to the most recent stable release
+- **`dev`**: Latest development build with newest features
+- **`v1.0.0`**: Specific version for environments requiring version pinning
+- **`1.0`**: Latest patch within minor version (e.g., v1.0.x)
+- **`1`**: Latest minor within major version (e.g., v1.x.x)
+
+#### **🔄 Updating Your Installation:**
+
+```bash
+# Update to latest stable
+docker-compose pull && docker-compose up -d
+
+# Update to latest development
+# Change image to :dev in docker-compose.yml first
+docker-compose pull && docker-compose up -d
+
+# Check current version
+docker image inspect ghcr.io/alxgarci/mediahook:latest | grep -i version
 ```
 
 ## Environment Variables
@@ -352,6 +451,20 @@ MediaHook/
 
 ## Development and Contributing
 
+### Development Workflow
+
+MediaHook uses a **Git Flow** branching strategy:
+
+#### **Branches:**
+- **`master`**: Production-ready code, always stable
+- **`dev`**: Integration branch for new features
+- **`feature/*`**: Individual feature development
+
+#### **Docker Images & Branches:**
+- `master` branch → `ghcr.io/alxgarci/mediahook:latest`
+- `dev` branch → `ghcr.io/alxgarci/mediahook:dev`
+- Version tags → `ghcr.io/alxgarci/mediahook:v1.0.0`
+
 ### Local setup
 
 ```bash
@@ -374,6 +487,26 @@ cp config/config.example.json config/config.json
 # Run in development mode
 python run.py
 ```
+
+### Contributing Process
+
+1. **Fork** the repository
+2. **Create** a feature branch from `dev`:
+   ```bash
+   git checkout dev
+   git checkout -b feature/amazing-feature
+   ```
+3. **Make** your changes and test them
+4. **Test** with the development Docker image:
+   ```bash
+   # Push to your dev branch
+   git push origin feature/amazing-feature
+   # Use the dev image to test
+   docker-compose -f docker-compose.yml up -d
+   ```
+5. **Submit** a Pull Request to the `dev` branch
+6. **After review**, changes will be merged to `dev`
+7. **Stable releases** are created by merging `dev` → `master` + version tag
 
 ### Local Docker build
 
@@ -433,6 +566,39 @@ curl https://api.telegram.org/bot<TOKEN>/getUpdates
 chmod -R 777 ./config
 ```
 
+### Issue: Wrong Docker image version
+```bash
+# Check current image version
+docker image inspect ghcr.io/alxgarci/mediahook:latest | grep -A5 Labels
+
+# Check available tags
+curl -s https://api.github.com/repos/alxgarci/MediaHook/releases/latest | grep tag_name
+
+# Force pull latest image
+docker-compose pull && docker-compose down && docker-compose up -d
+```
+
+## Release Notes and Versioning
+
+MediaHook follows semantic versioning (SemVer) for releases:
+
+### Version Format: `v{MAJOR}.{MINOR}.{PATCH}`
+
+- **MAJOR**: Breaking changes or significant architecture updates
+- **MINOR**: New features, backward compatible
+- **PATCH**: Bug fixes, security updates
+
+### Current Stable Version
+Check the latest stable version at: [GitHub Releases](https://github.com/alxgarci/MediaHook/releases)
+
+### Development Branch
+The `dev` branch contains the latest features and improvements that will be included in the next release. Use `ghcr.io/alxgarci/mediahook:dev` to test new features before they become stable.
+
+### Getting Notifications for New Releases
+- **Watch** the repository on GitHub for release notifications
+- **Star** the repository to stay updated with project activity
+- Check the [Releases page](https://github.com/alxgarci/MediaHook/releases) for detailed changelogs
+
 ## Security
 
 - **API Keys**: Never expose API keys in logs or public repositories.
@@ -452,13 +618,30 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 ## Contributing
 
-Contributions are welcome. Please:
+Contributions are welcome! MediaHook uses a development workflow designed to ensure stability:
 
-1. Fork the project
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Development Process:
+1. **Fork** the project
+2. **Create** a feature branch from `dev` (`git checkout -b feature/AmazingFeature`)
+3. **Develop** your feature using the `dev` Docker image for testing
+4. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
+5. **Push** to your branch (`git push origin feature/AmazingFeature`)
+6. **Open** a Pull Request targeting the `dev` branch
+
+### Testing Your Changes:
+```bash
+# Test with development image
+docker-compose down
+docker-compose pull  # Get latest dev image
+docker-compose up -d
+```
+
+### Release Process:
+- **Features** → `dev` branch → `ghcr.io/alxgarci/mediahook:dev`
+- **Stable releases** → `master` branch → `ghcr.io/alxgarci/mediahook:latest`
+- **Version tags** → `ghcr.io/alxgarci/mediahook:v1.0.0`
+
+All contributors will be credited in release notes!
 
 ## Support
 
