@@ -25,17 +25,6 @@ if [ ! -f "$CONFIG_JSON" ]; then
     # Copy config example
     cp "$EXAMPLE_CONFIG_JSON" "$CONFIG_JSON"
     
-    # Copy telegram text files if they don't exist
-    for template_file in /app/config-templates/telegram_texts*.json; do
-        if [ -f "$template_file" ]; then
-            filename=$(basename "$template_file")
-            if [ ! -f "/app/config/$filename" ]; then
-                echo "Copying $filename to config directory..."
-                cp "$template_file" "/app/config/$filename"
-            fi
-        fi
-    done
-    
     # Ensure permissions on /app/config
     chmod -R 777 /app/config
     
@@ -56,6 +45,16 @@ if [ ! -f "$CONFIG_JSON" ]; then
     exit 0
 else
     echo "config.json file already exists. Starting MediaHook..."
+    # Copy telegram text files if they don't exist
+    for template_file in /app/config-templates/telegram_texts*.json; do
+        if [ -f "$template_file" ]; then
+            filename=$(basename "$template_file")
+            if [ ! -f "/app/config/$filename" ]; then
+                echo "Copying $filename to config directory..."
+                cp "$template_file" "/app/config/$filename"
+            fi
+        fi
+    done
 fi
 
 # Ensure permissions on /app/config
