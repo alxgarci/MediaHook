@@ -2,6 +2,7 @@
 .venv/
 .venv-1/
 .vscode/
+.github/*.md
 __pycache__/
 **/__pycache__/
 config.json
