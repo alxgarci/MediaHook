@@ -4,7 +4,20 @@ Telegram Notification Manager
 This module provides comprehensive Telegram notification functionality
 for the MediaHook application. It handles sending formatted messages
 for Sonarr and Radarr events, including media additions, deletions,
-updates, and automated torrent management results.
+updates, and auto        if del_actions or no_del_actions:
+            res_message = f"{self.texts['qbittorrent']['deletion_results']}\n\n"
+            
+            if del_actions:
+                res_message += f"{self.texts['qbittorrent']['deleted_section']}\n"
+                for action in del_actions:
+                    if action and action.get('action') == KEY_ACT_DEL:
+                        torrent_name = action.get('name', 'Unknown torrent')
+                        torrent_hash = action.get('hash', '')[:8]  # Show first 8 chars of hash
+                        res_message += f"  🗑️ {torrent_name} ({torrent_hash}...)\n"
+                res_message += "\n"
+            
+            if no_del_actions:
+                res_message += f"{self.texts['qbittorrent']['not_deleted_section']}\n"management results.
 
 Classes:
     TelegramNotifier: Main class for handling Telegram notifications
@@ -16,7 +29,10 @@ The module supports rich HTML formatting, image attachments, and
 different chat channels for different types of notifications.
 """
 
+import json
+import os
 import requests
+from pathlib import Path
 from app.logger import logger
 from utils.utils import bytes_to_gb
 
@@ -37,6 +53,7 @@ class TelegramNotifier:
         base_url: Base URL for Telegram API
         send_message_url: URL for sending text messages
         send_photo_url: URL for sending photo messages
+        texts: Customizable text strings for notifications
     """
     
     def __init__(self, app_config):
@@ -56,6 +73,74 @@ class TelegramNotifier:
         self.base_url = f"https://api.telegram.org/bot{self.token}"
         self.send_message_url = f"{self.base_url}/sendMessage"
         self.send_photo_url = f"{self.base_url}/sendPhoto"
+        
+        # Load customizable texts
+        self.texts = self._load_telegram_texts()
+    
+    def _load_telegram_texts(self):
+        """
+        Load customizable text strings from telegram_texts.json
+        Tries to load language-specific file first, then falls back to generic file
+        
+        Returns:
+            dict: Dictionary containing customizable text strings
+        """
+        # Default texts (fallback)
+        default_texts = {
+            "sonarr": {
+                "series_added": "📺 <b>Series added:</b>",
+                "series_updated": "🔄 <b>Series updated:</b>",
+                "episodes_deleted": "🗑️ <b>Episodes deleted:</b>"
+            },
+            "radarr": {
+                "movie_added": "📢 <b>Movie added:</b>",
+                "movie_updated": "📢 <b>Movie updated:</b>",
+                "movies_deleted": "🗑️ <b>Movies deleted:</b>",
+                "quality_label": "📡",
+                "audio_label": "🗣️",
+                "subtitles_label": "💬"
+            },
+            "qbittorrent": {
+                "deletion_results": "🧹 <b>Torrent deletion results:</b>",
+                "deleted_section": "✅ <b>Deleted:</b>",
+                "not_deleted_section": "❌ <b>Not deleted:</b>"
+            }
+        }
+        
+        try:
+            config_dir = Path(os.path.dirname(os.path.abspath(__file__))) / '../config'
+            
+            # Get language from configuration
+            language = None
+            if hasattr(self.app_config, 'tmdb') and hasattr(self.app_config.tmdb, 'display_language'):
+                language = self.app_config.tmdb.display_language
+                logger.debug(f"Using language from config: {language}")
+            
+            # Try language-specific file first (e.g., telegram_texts.es.json)
+            if language:
+                lang_specific_path = config_dir / f'telegram_texts.{language}.json'
+                if lang_specific_path.exists():
+                    with open(lang_specific_path, 'r', encoding='utf-8') as f:
+                        custom_texts = json.load(f)
+                    logger.debug(f"Language-specific Telegram texts loaded: {lang_specific_path}")
+                    return custom_texts
+                else:
+                    logger.debug(f"Language-specific file not found: {lang_specific_path}")
+            
+            # Fallback to generic telegram_texts.json
+            generic_path = config_dir / 'telegram_texts.json'
+            if generic_path.exists():
+                with open(generic_path, 'r', encoding='utf-8') as f:
+                    custom_texts = json.load(f)
+                logger.debug("Generic Telegram texts loaded successfully")
+                return custom_texts
+            else:
+                logger.warning(f"No Telegram texts file found, using defaults")
+                return default_texts
+                
+        except Exception as e:
+            logger.error(f"Error loading Telegram texts: {e}, using defaults")
+            return default_texts
     
     def send_sonarr_message(self, added, deleted, updated, deleted_size):
         """
@@ -70,28 +155,31 @@ class TelegramNotifier:
         res_message = ""
         
         if added:
-            res_message += "📺 <b>Series added:</b>\n"
+            res_message += f"{self.texts['sonarr']['series_added']}\n"
             for series, episodes in added.items():
-                res_message += f"  🔸 <a href=\"{episodes[0]['imdbUrl']}\">{series}</a>\n"
-                for episode in episodes:
-                    res_message += f"    - <a href=\"{episode['url']}\">S{episode['season']}E{episode['episode']}</a>\n"
+                res_message += f"    · <a href=\"{episodes[0]['imdbUrl']}\"><i>{series}</i></a>: "
+                res_message += ", ".join(f"S{episode['season']}E{episode['episode']}"
+                                           for episode in episodes)
                 res_message += "\n"
+            res_message += "\n"
         
         if updated:
-            res_message += "🔄 <b>Series updated:</b>\n"
+            res_message += f"{self.texts['sonarr']['series_updated']}\n"
             for series, episodes in updated.items():
-                res_message += f"  🔸 <a href=\"{episodes[0]['imdbUrl']}\">{series}</a>\n"
-                for episode in episodes:
-                    res_message += f"    - <a href=\"{episode['url']}\">S{episode['season']}E{episode['episode']}</a>\n"
+                res_message += f"    · <a href=\"{episodes[0]['imdbUrl']}\"><i>{series}</i></a>: "
+                res_message += ", ".join(f"S{episode['season']}E{episode['episode']}"
+                                           for episode in episodes)
                 res_message += "\n"
+            res_message += "\n"
         
         if deleted:
-            res_message += "🗑️ <b>Episodes deleted:</b>\n"
+            res_message += f"{self.texts['sonarr']['episodes_deleted']}\n"
             for series, episodes in deleted.items():
-                res_message += f"  🔹 <a href=\"{episodes[0]['imdbUrl']}\">{series}</a>\n"
-                for episode in episodes:
-                    res_message += f"    - <a href=\"{episode['url']}\">S{episode['season']}E{episode['episode']}</a>\n"
+                res_message += f"    · <a href=\"{episodes[0]['imdbUrl']}\"><i>{series}</i></a>: "
+                res_message += ", ".join(f"S{episode['season']}E{episode['episode']}"
+                                           for episode in episodes)
                 res_message += "\n"
+            res_message += "\n"
         
         if res_message:
             self.send_message(res_message, parse_mode=True)
@@ -106,24 +194,21 @@ class TelegramNotifier:
             deleted_size: Total size of deleted content in bytes
             is_upgrade: Boolean indicating if this is an upgrade operation
         """
-        action = "🔄 updated" if is_upgrade else "🎬 added"
-        
-        res_message = f"🎭 <b>Movie {action}:</b>\n"
-        res_message += f"  🔸 <a href=\"{added['imdbUrl']}\">{added['title']} ({added['year']})</a>\n"
-        res_message += f"    - <b>Quality:</b> {added['quality']['quality']['name']}\n"
-        res_message += f"    - <b>Audio:</b> {added['audio']}\n"
-        res_message += f"    - <b>Subtitles:</b> {added['subtitles']}\n\n"
+        if is_upgrade:
+            res_message = f"{self.texts['radarr']['movie_updated']}\n"
+        else:   
+            res_message = f"{self.texts['radarr']['movie_added']}\n"
+        res_message += f"    · <a href=\"{added['imdbUrl']}\">{added['title']} ({added['year']})</a>\n"
+        res_message += f"      {self.texts['radarr']['quality_label']} {str(added['quality'])}\n"
+        res_message += f"      {self.texts['radarr']['audio_label']} {added['audio']}\n"
+        res_message += f"      {self.texts['radarr']['subtitles_label']} {added['subtitles']}\n\n"
         
         if deleted:
-            res_message += "🗑️ <b>Movies deleted:</b>\n"
+            res_message += f"{self.texts['radarr']['movies_deleted']}\n"
             for movie in deleted:
-                res_message += f"  🔹 <a href=\"{movie['imdbUrl']}\">{movie['title']} ({movie['year']})</a>\n"
-                res_message += f"    - {bytes_to_gb(movie['size'])} GB\n"
+                res_message += f"    · <a href=\"{movie['imdbUrl']}\">{movie['title']} ({movie['year']})</a>\n"
         
-        if added.get('poster'):
-            self.send_image_message(res_message, added['poster'])
-        else:
-            self.send_message(res_message, parse_mode=True)
+        self.send_message(res_message, parse_mode=True)
     
     def send_message(self, message, parse_mode=False):
         """
@@ -137,7 +222,7 @@ class TelegramNotifier:
             params = {
                 'chat_id': self.chat_id,
                 'text': message,
-                'disable_web_page_preview': True
+                'disable_web_page_preview': False
             }
             
             if parse_mode:
@@ -215,22 +300,37 @@ class TelegramNotifier:
         KEY_ACT_NODELETE = DeleteManualImportManager.KEY_ACT_NODELETE
         
         if del_actions or no_del_actions:
-            res_message = "🤖 <b>Automatic deletion results:</b>\n\n"
+            res_message = f"{self.texts['qbittorrent']['deletion_results']}\n\n"
             
             if del_actions:
-                res_message += "✅ <b>Deleted:</b>\n"
+                res_message += f"{self.texts['qbittorrent']['deleted_section']}\n"
                 for action in del_actions:
                     if action and action.get('action') == KEY_ACT_DEL:
-                        res_message += f"  🔹 Torrent deleted\n"
+                        torrent_name = action.get('name', 'Unknown torrent')
+                        torrent_hash = action.get('hash', '')[:8]  # Show first 8 chars of hash
+                        res_message += f"   · {torrent_name} ({torrent_hash}...)\n"
                 res_message += "\n"
             
             if no_del_actions:
-                res_message += "❌ <b>Not deleted:</b>\n"
+                res_message += f"{self.texts['qbittorrent']['not_deleted_section']}\n"
+                
+                # Group by reason for better readability
+                reasons = {}
                 for action in no_del_actions:
                     if action and action.get('action') == KEY_ACT_NODELETE:
                         reason = action.get('reason', 'Unknown reason')
-                        res_message += f"  🔸 {reason}\n"
-                res_message += "\n"
+                        torrent_name = action.get('name', 'Unknown torrent')
+                        torrent_hash = action.get('hash', '')[:8] if action.get('hash') else 'no-hash'
+                        
+                        if reason not in reasons:
+                            reasons[reason] = []
+                        reasons[reason].append(f"{torrent_name} ({torrent_hash}...)")
+                
+                for reason, torrents in reasons.items():
+                    res_message += f"   · <b>{reason}:</b>\n"
+                    for torrent in torrents:
+                        res_message += f"     - {torrent}\n"
+                    res_message += "\n"
             
             self.send_qbit_message(res_message)
 

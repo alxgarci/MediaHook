@@ -449,7 +449,8 @@ def overseerr_webhook():
 
 def start_server():
     """Start the Flask server to listen for webhooks."""    
-    app.run(host='0.0.0.0', port=4343)
+    app.run(host='0.0.0.0', port=4344)
 
 if __name__ == "__main__":
     start_server()
+    

@@ -28,6 +28,8 @@ This is just a 'pro' version of what I've been using for more than a year, as I 
   - [Installation](#installation)
     - [Option 1: Using GitHub Container Registry image (Recommended)](#option-1-using-github-container-registry-image-recommended)
     - [Option 2: Local build](#option-2-local-build)
+  - [Environment Variables](#environment-variables)
+    - [Examples:](#examples)
   - [Configuration](#configuration)
     - [Modify the default configuration file](#modify-the-default-configuration-file)
     - [Configuration file parameters](#configuration-file-parameters)
@@ -82,8 +84,12 @@ services:
   mediahook:
     image: ghcr.io/alxgarci/mediahook:latest
     container_name: mediahook
+    environment:
+      # Optional: Customize the internal port and host
+      - MEDIAHOOK_PORT=4343
+      - MEDIAHOOK_HOST=0.0.0.0
     ports:
-      - "4343:4343"
+      - "4343:4343"  # Change the external port as needed
     volumes:
       - ./config:/app/config
     restart: unless-stopped
@@ -98,6 +104,35 @@ cd MediaHook
 
 # Run with Docker Compose
 docker-compose up -d
+```
+
+## Environment Variables
+
+MediaHook supports the following environment variables for customization:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEDIAHOOK_PORT` | `4343` | Internal port the application listens on |
+| `MEDIAHOOK_HOST` | `0.0.0.0` | Host/interface to bind to (use `127.0.0.1` for localhost only) |
+
+### Examples:
+
+**Run on a different port:**
+```bash
+# Docker run
+docker run -e MEDIAHOOK_PORT=8080 -p 8080:8080 ghcr.io/alxgarci/mediahook:latest
+
+# Docker Compose
+environment:
+  - MEDIAHOOK_PORT=8080
+ports:
+  - "8080:8080"
+```
+
+**Local development:**
+```bash
+export MEDIAHOOK_PORT=5000
+python run.py
 ```
 
 ## Configuration
@@ -149,8 +184,9 @@ Edit `config/config.json` with your data:
   ],
   "tmdb": {
     "api_key": "your_tmdb_api_key",      // TMDB API Key
-    "language": "es-ES",                 // Preferred language for movie/show titles. See the TMDB Locales section below for supported values.
-    "display_language": "es"             // Language for displaying subtitles and audio (in movies). Can use any of the present in https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+    "language": "es-ES",                 // Preferred locale for movie/show titles. Refer to the TMDB Locales section for supported values.
+    "display_language": "es",            // Language code for subtitles and audio (movies). Use any valid code from https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+    // This setting also determines the language for Telegram notifications. If no matching template exists, it will fall back to the default 'telegram_texts.json'.
   },
   "telegram": {
     "token": "your_telegram_bot_token",  // Telegram bot token

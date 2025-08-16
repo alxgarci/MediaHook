@@ -1,0 +1,20 @@
+{
+  "sonarr": {
+    "series_added": "📢 <b>Series added:</b>",
+    "series_updated": "♻️ <b>Series updated:</b>",
+    "episodes_deleted": "🗑️ <b>Episodes deleted:</b>"
+  },
+  "radarr": {
+    "movie_added": "📢 <b>Movie added:</b>",
+    "movie_updated": "♻️ <b>Movie updated:</b>",
+    "movies_deleted": "🗑️ <b>Movies deleted:</b>",
+    "quality_label": "📡",
+    "audio_label": "🗣️",
+    "subtitles_label": "💬"
+  },
+  "qbittorrent": {
+    "deletion_results": "🧹 <b>Torrent deletion results:</b>",
+    "deleted_section": "✅ <b>Deleted:</b>",
+    "not_deleted_section": "❌ <b>Not deleted:</b>"
+  }
+}

@@ -4,6 +4,10 @@ MediaHook Main Entry Point
 
 This is the main entry point for running the MediaHook application.
 It starts the Flask server to listen for webhooks from Sonarr, Radarr, and Overseerr.
+
+Environment Variables:
+    MEDIAHOOK_PORT: Port to listen on (default: 4343)
+    MEDIAHOOK_HOST: Host to bind to (default: 0.0.0.0)
 """
 
 import sys

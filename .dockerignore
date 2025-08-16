@@ -19,21 +19,20 @@ env/
 .git/
 .gitignore
 
-# Ignore Docker files
-Dockerfile
+# Ignore specific Docker files but keep the ones we might need
 docker-compose.yml
-.dockerignore
+docker-compose.test.yml
 
 # Ignore logs (will be created by container)
 *.log
-config/cfg/logs/
+config/logs/
 
-# Ignore test files (since you removed testing logic)
+# Ignore test files
 test/
 
 # Ignore documentation
 README.md
 
-# Ignore development config (only in development)
-# Comment this line when building for production:
-config/config.json
+# NOTE: We need config.example.json and telegram_texts*.json files
+# Only ignore the actual config.json in production if using volume mounts
+# config/config.json

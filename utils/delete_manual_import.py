@@ -80,7 +80,8 @@ class DeleteManualImportManager:
             self.sonarr_headers = None
         
         # qBittorrent configuration
-        self.qbittorrent_instances = app_config.qbittorrent_instances
+        from utils.qbittorrent_connections import qbit_manager
+        self.qbittorrent_manager = qbit_manager
         
         if self.dry_run:
             logger.info("🔍 DRY RUN MODE ACTIVATED - Torrents will not be actually deleted")
@@ -135,7 +136,7 @@ class DeleteManualImportManager:
         Returns:
             List of torrents in the category
         """
-        qbit_instance.login()
+        # Login is handled by caller
         url = f"{qbit_instance.api_url}/api/v2/torrents/info?filter=all&category={category}"
         response = qbit_instance.session.get(url)
         response.raise_for_status()
@@ -338,38 +339,41 @@ class DeleteManualImportManager:
         # Remove duplicates
         unique_hashes = set(hashes)
         
-        for qbit_instance in self.qbittorrent_instances:
+        for qbit_instance in self.qbittorrent_manager.get_all_instances():
+            # Login only once per instance
             qbit_instance.login()
             
             # Get seeding information for all hashes
-            info = qbit_instance.get_torrent_info(list(unique_hashes)) or {}
+            torrents_info = qbit_instance.get_torrent_info(list(unique_hashes)) or []
+            
+            # Create a hash lookup dictionary
+            torrent_dict = {torrent['hash'].lower(): torrent for torrent in torrents_info}
             
             for hash_value in unique_hashes:
                 hash_lower = hash_value.lower()
-                data = info.get(hash_lower, {})
-                seed_days = data.get('seeding_time', 0) / 86400
+                torrent_data = torrent_dict.get(hash_lower)
                 
                 source_name = sources[0] if sources else f"Unknown-{item_id}"
                 
-                if seed_days >= self.SEED_THRESHOLD_DAYS:
-                    if self.delete_torrent_from_qbittorrent(qbit_instance, hash_value, source_name):
-                        reason = self.KEY_REASON_DRY_RUN if self.dry_run else ""
-                        res_actions_del.append(
-                            self.create_action_dict(source_name, hash_value, self.KEY_ACT_DEL, self.KEY_TYPE_HIST, reason)
-                        )
+                if torrent_data:
+                    seed_days = torrent_data.get('seeding_time', 0) / 86400
+                    
+                    if seed_days >= self.SEED_THRESHOLD_DAYS:
+                        if self.delete_torrent_from_qbittorrent(qbit_instance, hash_value, source_name):
+                            reason = self.KEY_REASON_DRY_RUN if self.dry_run else ""
+                            res_actions_del.append(
+                                self.create_action_dict(source_name, hash_value, self.KEY_ACT_DEL, self.KEY_TYPE_HIST, reason)
+                            )
                     else:
+                        logger.info(f"⏸️  Torrent {hash_value} seed={seed_days:.1f}d < {self.SEED_THRESHOLD_DAYS}d → skipped")
                         res_actions_nodel.append(
-                            self.create_action_dict(source_name, hash_value, self.KEY_ACT_NODELETE, self.KEY_TYPE_HIST, "ERROR_DELETE")
+                            self.create_action_dict(source_name, hash_value, self.KEY_ACT_NODELETE, self.KEY_TYPE_HIST, self.KEY_REASON_SEEDTIME_UNCOMPLETE)
                         )
                 else:
-                    logger.info(f"⏸️  Torrent {hash_value} seed={seed_days:.1f}d < {self.SEED_THRESHOLD_DAYS}d → skipped")
-                    if seed_days > 1:
-                        reason = self.KEY_REASON_SEEDTIME_UNCOMPLETE
-                    else:
-                        reason = f"{self.KEY_REASON_NOT_FOUND} {qbit_instance.name}"
-                    
+                    # Torrent not found in this instance
+                    logger.info(f"⏸️  Torrent {hash_value} seed=0.0d < {self.SEED_THRESHOLD_DAYS}d → skipped")
                     res_actions_nodel.append(
-                        self.create_action_dict(source_name, hash_value, self.KEY_ACT_NODELETE, self.KEY_TYPE_HIST, reason)
+                        self.create_action_dict(source_name, hash_value, self.KEY_ACT_NODELETE, self.KEY_TYPE_HIST, f"{self.KEY_REASON_NOT_FOUND} {qbit_instance.name}")
                     )
         
         return res_actions_del, res_actions_nodel
@@ -390,7 +394,9 @@ class DeleteManualImportManager:
         
         # Collect all candidate torrents
         candidates = []
-        for qbit_instance in self.qbittorrent_instances:
+        for qbit_instance in self.qbittorrent_manager.get_all_instances():
+            # Login once per instance
+            qbit_instance.login()
             for category in categories:
                 try:
                     torrents = self.list_torrents_by_category(qbit_instance, category)
@@ -469,8 +475,9 @@ class DeleteManualImportManager:
             
             # Check seeding time
             try:
-                info = qbit_instance.get_torrent_info([torrent['hash']])
-                seed_sec = info.get(torrent['hash'], {}).get('seeding_time', 0)
+                info_list = qbit_instance.get_torrent_info([torrent['hash']])
+                torrent_data = info_list[0] if info_list else {}
+                seed_sec = torrent_data.get('seeding_time', 0)
                 seed_days = seed_sec / 86400
                 
                 logger.info(f"🎯 Match {match_index}: {torrent['name']} ({torrent['hash']}) in {qbit_instance.name} by {reason}; seed={seed_days:.1f}d")

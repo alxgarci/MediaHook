@@ -8,3 +8,5 @@ __pycache__/
 config.json
 test/
 app.log
+appconfig/
+docker-compose.test.yml

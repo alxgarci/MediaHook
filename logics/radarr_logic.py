@@ -110,6 +110,7 @@ class RadarrLogic:
             str: Localized title if available, otherwise original title.
         """
         if not tmdb_id or not self.tmdb_api_key:
+            logger.debug("TMDb ID of the content or API key not available, using original title.")
             return original
         
         try:

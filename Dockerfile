@@ -17,18 +17,20 @@ COPY utils/ ./utils/
 COPY run.py .
 COPY entrypoint.sh .
 
-# Copy config files
-COPY config/config.example.json ./config/
-# For development, uncomment next line:
-# COPY config/config.json ./config/
+# Copy config files to a template directory (not /app/config)
+COPY config/*.json ./config-templates/
 
-# Create config and logs directories with proper permissions
+# Create the actual config directory for volume mounting
 RUN mkdir -p /app/config/logs && chmod -R 777 /app/config
 
 # Make entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 4343
+# Set default port
+ENV MEDIAHOOK_PORT=4343
+ENV MEDIAHOOK_HOST=0.0.0.0
+
+EXPOSE ${MEDIAHOOK_PORT}
 
 # Command to run the application
 # CMD ["python", "run.py"]

@@ -31,11 +31,11 @@ def get_log_level():
             "ERROR": logging.ERROR, 
             "CRITICAL": logging.CRITICAL
         }
-        return levels.get(log_level, logging.INFO)
+        return levels.get(log_level, logging.DEBUG)
         
     except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        # If any error occurs, use INFO as default level
-        return logging.INFO
+        # If any error occurs, use DEBUG as default level
+        return logging.DEBUG
 
 # Get log level from config.json
 LOG_LEVEL = get_log_level()
